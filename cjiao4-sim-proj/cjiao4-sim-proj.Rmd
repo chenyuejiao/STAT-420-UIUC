@@ -1,0 +1,716 @@
+---
+title: 'Week 6 - Simulation Project'
+author: "STAT 420, Summer 2020, Chenyue Jiao (cjiao4)"
+date: 'June 25, 2020'
+output:
+  html_document: 
+    theme: readable
+    toc: yes  
+  pdf_document: default
+urlcolor: cyan
+---
+
+***
+
+```{r setup, echo = FALSE, message = FALSE, warning = FALSE}
+options(scipen = 1, digits = 4, width = 80)
+library(knitr)
+opts_chunk$set(cache = TRUE, autodep = TRUE)
+```
+
+
+# Simulation Study 1: Significance of Regression
+
+## Introduction
+
+In this simulation study, we will investigate the significance of regression test. We will simulate from two different models:
+
+1. The **"significant"** model
+
+\[
+Y_i = \beta_0 + \beta_1 x_{i1} + \beta_2 x_{i2} + \beta_3 x_{i3} + \epsilon_i
+\]
+
+where $\epsilon_i \sim N(0, \sigma^2)$ and
+
+- $\beta_0 = 3$,
+- $\beta_1 = 1$,
+- $\beta_2 = 1$,
+- $\beta_3 = 1$.
+
+2. The **"non-significant"** model
+
+\[
+Y_i = \beta_0 + \beta_1 x_{i1} + \beta_2 x_{i2} + \beta_3 x_{i3} + \epsilon_i
+\]
+
+where $\epsilon_i \sim N(0, \sigma^2)$ and
+
+- $\beta_0 = 3$,
+- $\beta_1 = 0$,
+- $\beta_2 = 0$,
+- $\beta_3 = 0$.
+
+For both, we will consider a sample size of $25$ and three possible levels of noise.
+
+- $n = 25$
+- $\sigma \in (1, 5, 10)$
+
+We are going to use the data from [`study_1.csv`](study_1.csv) for the values of the predictors. For each model and $\sigma$ combination, we will perform $2000$ simulations. For each simulation, fit a regression model of the same form used to perform the simulation and to obtain an empirical distribution for each of the following values.
+
+- The **$F$ statistic** for the significance of regression test.
+- The **p-value** for the significance of regression test
+- **$R^2$**
+
+## Methods
+
+The methods section contains the `R` code that I use to generate the results in this simulation study.
+
+```{r}
+birthday = 199501117
+set.seed(birthday)
+```
+
+```{r message=FALSE}
+library(readr)
+example_data = read_csv("study_1.csv")
+n = 25
+num_sims = 2000
+```
+
+```{r}
+beta_0 = 3
+beta_1 = 1
+beta_2 = 1
+beta_3 = 1
+s = 0
+sigmas = c(1, 5, 10)
+
+f_sta_sig = matrix(0, 3, num_sims)
+p_val_sig = matrix(0, 3, num_sims)
+r_2_sig = matrix(0, 3, num_sims)
+
+for (sigma in sigmas) {
+  s = s + 1
+  for (i in 1:num_sims) {
+    eps = rnorm(n, mean = 0, sd = sigma)
+    example_data$y = beta_0 + beta_1 * example_data$x1 + beta_2 * example_data$x2 + beta_3 * example_data$x3 + eps
+    sig_model = lm(y ~ x1 + x2 + x3, data = example_data)
+  
+    f_sta_sig[s,i] = summary(sig_model)$fstatistic[[1]]
+    p_val_sig[s,i] = pf(summary(sig_model)$fstatistic[1], summary(sig_model)$fstatistic[2], summary(sig_model)$fstatistic[3], lower.tail = FALSE)
+    r_2_sig[s,i] = summary(sig_model)$r.squared[[1]]
+  }
+}
+```
+
+
+```{r}
+beta_0 = 3
+beta_1 = 0
+beta_2 = 0
+beta_3 = 0
+s = 0
+sigmas = c(1, 5, 10)
+
+f_sta_nul = matrix(0, 3, num_sims)
+p_val_nul = matrix(0, 3, num_sims)
+r_2_nul = matrix(0, 3, num_sims)
+
+for (sigma in sigmas) {
+  s = s + 1
+  for (i in 1:num_sims) {
+    eps = rnorm(n, mean = 0, sd = sigma)
+    example_data$y = beta_0 + beta_1 * example_data$x1 + beta_2 * example_data$x2 + beta_3 * example_data$x3 + eps
+    nul_model = lm(y ~ x1 + x2 + x3, data = example_data)
+  
+    f_sta_nul[s,i] = summary(nul_model)$fstatistic[[1]]
+    p_val_nul[s,i] = pf(summary(nul_model)$fstatistic[1], summary(nul_model)$fstatistic[2], summary(nul_model)$fstatistic[3], lower.tail = FALSE)
+    r_2_nul[s,i] = summary(nul_model)$r.squared[[1]]
+  }
+}
+```
+
+
+## Results
+
+Distribution of **F-statistic** for the significance of regression test of the significant model
+
+```{r}
+par(mfrow=c(1,3),oma = c(0, 0, 3, 0)) 
+
+hist(f_sta_sig[1,], prob = TRUE, xlab ="F-statistic",
+     main = "sigma=1", col="dodgerblue", xlim = c(0,100),
+     ylim = c(0.0,1.0))
+curve(df(x, df1=3, df2=21), col = "orange", add = TRUE, lwd = 1.5, from=0, to=100)
+
+hist(f_sta_sig[2,], prob = TRUE, xlab ="F-statistic",
+     main = "sigma=5", col="dodgerblue", xlim=c(0,20),
+     ylim = c(0.0,1.0))
+curve(df(x, df1=3, df2=21), col = "orange", add = TRUE, lwd = 1.5, from=0, to=20) 
+
+hist(f_sta_sig[3,], prob = TRUE, xlab ="F-statistic",
+     main = "sigma=10", col="dodgerblue", xlim=c(0,20), ylim = c(0.0,1.0))
+curve(df(x, df1=3, df2=21),col = "orange", add = TRUE, lwd = 1.5, from=0, to=20) 
+
+mtext("Distribution of F-statistic for the significant model", outer = TRUE, cex = 1.5)
+```
+
+Distribution of **F-statistic** for the significance of regression test of the non-significant model
+
+```{r}
+par(mfrow=c(1,3),oma = c(0, 0, 3, 0)) 
+
+hist(f_sta_nul[1,], prob = TRUE, xlab ="F-statistic",
+     main = "sigma=1", col="dodgerblue", xlim = c(0,100),
+     ylim = c(0.0,1.0))
+curve(df(x, df1=3, df2=21), col = "orange", add = TRUE, lwd = 1.5, from=0, to=100)
+
+hist(f_sta_nul[2,], prob = TRUE, xlab ="F-statistic",
+     main = "sigma=5", col="dodgerblue", xlim=c(0,20),
+     ylim = c(0.0,1.0))
+curve(df(x, df1=3, df2=21), col = "orange", add = TRUE, lwd = 1.5, from=0, to=20) 
+
+hist(f_sta_nul[3,], prob = TRUE, xlab ="F-statistic",
+     main = "sigma=10", col="dodgerblue", xlim=c(0,20), ylim = c(0.0,1.0))
+curve(df(x, df1=3, df2=21),col = "orange", add = TRUE, lwd = 1.5, from=0, to=20) 
+
+mtext("Distribution of F-statistic for the non-significant model", outer = TRUE, cex = 1.5)
+```
+
+Distribution of **p-value** for the significance of regression test of the significant model
+
+```{r}
+par(mfrow=c(1,3),oma = c(0, 0, 3, 0))
+x = seq(0.0, 1.0, length = 200)
+y = dunif(x)
+
+hist(p_val_sig[1,], prob = TRUE, xlab ="p-value",
+     main = "sigma=1", col="dodgerblue")
+lines(x,y,type = "l", lwd=2, col = "orange")
+
+hist(p_val_sig[2,], prob = TRUE, xlab ="p-value",
+     main = "sigma=5", col="dodgerblue")
+lines(x,y,type = "l", lwd=2, col = "orange")
+
+hist(p_val_sig[3,], prob = TRUE, xlab ="p-value",
+     main = "sigma=10", col="dodgerblue")
+lines(x,y,type = "l", lwd=2, col = "orange")
+
+mtext("Distribution of p-value for the significant model", outer = TRUE, cex = 1.5)
+```
+
+Distribution of **p-value** for the significance of regression test of the non-significant model
+
+```{r}
+par(mfrow=c(1,3),oma = c(0, 0, 3, 0))
+#x = seq(0.0, 1.0, length = 200)
+#y = dunif(x)
+
+hist(p_val_nul[1,], prob = TRUE, xlab ="p-value",
+     main = "sigma=1", col="dodgerblue")
+lines(x,y,type = "l", lwd=2, col = "orange")
+
+hist(p_val_nul[2,], prob = TRUE, xlab ="p-value",
+     main = "sigma=5", col="dodgerblue")
+lines(x,y,type = "l", lwd=2, col = "orange")
+
+hist(p_val_nul[3,], prob = TRUE, xlab ="p-value",
+     main = "sigma=10", col="dodgerblue")
+lines(x,y,type = "l", lwd=2, col = "orange")
+
+mtext("Distribution of p-value for the non-significant model", outer = TRUE, cex = 1.5)
+```
+
+Distribution of **R-squared** of the significant model
+
+```{r}
+par(mfrow=c(1,3),oma = c(0, 0, 3, 0))
+
+hist(r_2_sig[1,], prob = TRUE, xlab ="R-squared",
+     main = "sigma=1", col="dodgerblue", xlim = c(0.0,1.0),
+     ylim = c(0.0,10.0))
+curve(dbeta(x, 3/2, 21/2), col = "orange", add = TRUE, lwd = 1.5, yaxt = "n")
+
+hist(r_2_sig[2,], prob = TRUE, xlab ="R-squared",
+     main = "sigma=5", col="dodgerblue",
+     ylim = c(0.0,10.0))
+curve(dbeta(x, 3/2, 21/2), col = "orange", add = TRUE, lwd = 1.5, yaxt = "n")
+
+hist(r_2_sig[3,], prob = TRUE, xlab ="R-squared",
+     main = "sigma=10", col="dodgerblue",
+     ylim = c(0.0,10.0))
+curve(dbeta(x, 3/2, 21/2), col = "orange", add = TRUE, lwd = 1.5, yaxt = "n")
+
+mtext("Distribution of R-squared for the significant model", outer = TRUE, cex = 1.5)
+```
+
+Distribution of **R-squared** of the non-significant model
+
+```{r}
+par(mfrow=c(1,3),oma = c(0, 0, 3, 0))
+
+hist(r_2_nul[1,], prob = TRUE, xlab ="R-squared",
+     main = "sigma=1", col="dodgerblue",
+     ylim = c(0.0,10.0))
+curve(dbeta(x, 3/2, 21/2), col = "orange", add = TRUE, lwd = 1.5, yaxt = "n")
+
+hist(r_2_nul[2,], prob = TRUE, xlab ="R-squared",
+     main = "sigma=5", col="dodgerblue",
+     ylim = c(0.0,10.0))
+curve(dbeta(x, 3/2, 21/2), col = "orange", add = TRUE, lwd = 1.5, yaxt = "n")
+
+hist(r_2_nul[3,], prob = TRUE, xlab ="R-squared",
+     main = "sigma=10", col="dodgerblue",
+     ylim = c(0.0,10.0))
+curve(dbeta(x, 3/2, 21/2), col = "orange", add = TRUE, lwd = 1.5, yaxt = "n")
+
+mtext("Distribution of R-squared for the non-significant model", outer = TRUE, cex = 1.5)
+```
+
+
+## Discussion
+
+1. Do we know the true distribution of any of these values?
+
+- F-statistics follows a **F distribution** under the null hypothesis.
+- For the significant model, the p-value has a distribution for which p-values near zero are more likely than p-values near 1; For the non-significant model, the p-value has a **uniform distribution** between 0 and 1.
+- R-squared follows a **beta distribution** under the null hypothesis. 
+
+
+2.  How do the empirical distributions from the simulations compare to the true distributions?
+
+- For the significant model, as the level of $\sigma$ increases, the empirical distribution gets closer to the true distribution under NULL hypothesis for all three parameters (p-value, r-squared, f-statistic), which could be attributed to the fact that the models do not fit well and coefficients lose their significance approaching towards NULL hypothesis.
+- For the non-significant model, as shown above, the empirical distributions is similar to the expected true distribution under NULL hypothesis for all three parameters (p-value, r-squared, f-statistic). 
+
+
+3. How are each of the $F$ statistic, the p-value, and $R^2$ related to $\sigma$? Are any of those relationships the same for the significant and non-significant models?
+
+- For the significant model, as $\sigma$ increases, the center of r-squared distribution shifts from 1 (good fit) towards 0 (worst fit) indicating that the model is losing the goodness of fit due to increase in the noise level. 
+- For the non-significant model, the r-squared value remains unaffected by $\sigma$ and overlaps well its true distribution under NULL hypothesis.
+
+
+
+# Simulation Study 2: Using RMSE for Selection?
+
+## Introduction
+
+In this simulation study we will use RMSE to select the appropriate model. We will simulate from the model
+
+\[
+Y_i = \beta_0 + \beta_1 x_{i1} + \beta_2 x_{i2} + \beta_3 x_{i3} + \beta_4 x_{i4} + \beta_5 x_{i5} + \beta_6 x_{i6} + \epsilon_i
+\]
+
+where $\epsilon_i \sim N(0, \sigma^2)$ and
+
+- $\beta_0 = 0$,
+- $\beta_1 = 3$,
+- $\beta_2 = -4$,
+- $\beta_3 = 1.6$,
+- $\beta_4 = -1.1$,
+- $\beta_5 = 0.7$,
+- $\beta_6 = 0.5$.
+
+We will consider a sample size of $500$ and three possible levels of noise.
+
+- $n = 500$
+- $\sigma \in (1, 2, 4)$
+
+We are going to use the data from [`study_2.csv`](study_2.csv) for the values of the predictors. Each time we randomly split the data into train and test sets of equal sizes (250 observations for training, 250 observations for testing). For each, fit **nine** models, with forms:
+
+- `y ~ x1`
+- `y ~ x1 + x2`
+- `y ~ x1 + x2 + x3`
+- `y ~ x1 + x2 + x3 + x4`
+- `y ~ x1 + x2 + x3 + x4 + x5`
+- `y ~ x1 + x2 + x3 + x4 + x5 + x6`
+- `y ~ x1 + x2 + x3 + x4 + x5 + x6 + x7`
+- `y ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8`
+- `y ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9`
+
+For each model and $\sigma$ combination, we will perform $1000$ simulations. For each simulation, we will calculate Train and Test RMSE. We will investigate how the average Train RMSE and average Test RMSE changes as a function of model size, whether this method can always select the correct model, and how the noise level affect the results. 
+
+
+## Methods
+
+The methods section contains the `R` code that I use to generate the results in this simulation study.
+
+```{r}
+birthday = 199501117
+set.seed(birthday)
+```
+
+```{r message=FALSE}
+library(readr)
+study_data = read_csv("study_2.csv")
+```
+
+```{r}
+beta_0 = 0
+beta_1 = 3
+beta_2 = -4
+beta_3 = 1.6
+beta_4 = -1.1
+beta_5 = 0.7
+beta_6 = 0.5
+beta_7 = 0
+beta_8 = 0
+beta_9 = 0
+sigmas = c(1, 2, 4) 
+s = 0 
+n = 500
+num_sims = 1000
+model_size = 1:9
+
+rmse = function(actual, predicted) {
+  sqrt(mean((actual - predicted) ^ 2))
+}
+```
+
+```{r}
+train_error_1 = matrix(0, 3, num_sims)
+test_error_1 = matrix(0, 3, num_sims)
+train_error_2 = matrix(0, 3, num_sims)
+test_error_2 = matrix(0, 3, num_sims)
+train_error_3 = matrix(0, 3, num_sims)
+test_error_3 = matrix(0, 3, num_sims)
+train_error_4 = matrix(0, 3, num_sims)
+test_error_4 = matrix(0, 3, num_sims)
+train_error_5 = matrix(0, 3, num_sims)
+test_error_5 = matrix(0, 3, num_sims)
+train_error_6 = matrix(0, 3, num_sims)
+test_error_6 = matrix(0, 3, num_sims)
+train_error_7 = matrix(0, 3, num_sims)
+test_error_7 = matrix(0, 3, num_sims)
+train_error_8 = matrix(0, 3, num_sims)
+test_error_8 = matrix(0, 3, num_sims)
+train_error_9 = matrix(0, 3, num_sims)
+test_error_9 = matrix(0, 3, num_sims)
+lowest_test_error = matrix(0, 3, num_sims)
+
+for (sigma in sigmas) {
+  s = s + 1
+  for (i in 1:num_sims) {
+    eps = rnorm(n, mean = 0, sd = sigma)
+    study_data$y = beta_0 + beta_1*study_data$x1 + beta_2*study_data$x2 + beta_3*study_data$x3 + beta_4*study_data$x4 + beta_5*study_data$x5 + beta_6*study_data$x6 + beta_7*study_data$x7 + beta_8*study_data$x8 + beta_9*study_data$x9 + eps
+    
+    study_trn_idx = sample(1:nrow(study_data), 250)
+    study_trn = study_data[study_trn_idx, ]
+    study_tst = study_data[-study_trn_idx, ]
+    
+    model_1 = lm(y ~ x1, data = study_trn)
+    model_2 = lm(y ~ x1 + x2, data = study_trn)
+    model_3 = lm(y ~ x1 + x2 + x3, data = study_trn)
+    model_4 = lm(y ~ x1 + x2 + x3 + x4, data = study_trn)
+    model_5 = lm(y ~ x1 + x2 + x3 + x4 + x5, data = study_trn)
+    model_6 = lm(y ~ x1 + x2 + x3 + x4 + x5 + x6, data = study_trn)
+    model_7 = lm(y ~ x1 + x2 + x3 + x4 + x5 + x6 + x7, data = study_trn)
+    model_8 = lm(y ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8, data = study_trn)
+    model_9 = lm(y ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9, data = study_trn)
+    
+    train_error_1[s,i] = rmse(study_trn$y, predict(model_1, study_trn))
+    train_error_2[s,i] = rmse(study_trn$y, predict(model_2, study_trn))
+    train_error_3[s,i] = rmse(study_trn$y, predict(model_3, study_trn))
+    train_error_4[s,i] = rmse(study_trn$y, predict(model_4, study_trn))
+    train_error_5[s,i] = rmse(study_trn$y, predict(model_5, study_trn))
+    train_error_6[s,i] = rmse(study_trn$y, predict(model_6, study_trn))
+    train_error_7[s,i] = rmse(study_trn$y, predict(model_7, study_trn))
+    train_error_8[s,i] = rmse(study_trn$y, predict(model_8, study_trn))
+    train_error_9[s,i] = rmse(study_trn$y, predict(model_9, study_trn))
+  
+    test_error_1[s,i] = rmse(study_tst$y, predict(model_1, study_tst))
+    test_error_2[s,i] = rmse(study_tst$y, predict(model_2, study_tst))
+    test_error_3[s,i] = rmse(study_tst$y, predict(model_3, study_tst))
+    test_error_4[s,i] = rmse(study_tst$y, predict(model_4, study_tst))
+    test_error_5[s,i] = rmse(study_tst$y, predict(model_5, study_tst))
+    test_error_6[s,i] = rmse(study_tst$y, predict(model_6, study_tst))
+    test_error_7[s,i] = rmse(study_tst$y, predict(model_7, study_tst))
+    test_error_8[s,i] = rmse(study_tst$y, predict(model_8, study_tst))
+    test_error_9[s,i] = rmse(study_tst$y, predict(model_9, study_tst))
+  
+    lowest_test_error[s,i] = which.min(c(test_error_1[s,i], test_error_2[s,i], test_error_3[s,i], test_error_4[s,i], test_error_5[s,i], test_error_6[s,i], test_error_7[s,i], test_error_8[s,i], test_error_9[s,i]))
+  }
+}
+```
+
+```{r}
+avg_train_error = cbind(rowMeans(train_error_1), rowMeans(train_error_2), rowMeans(train_error_3), rowMeans(train_error_4), rowMeans(train_error_5), rowMeans(train_error_6), rowMeans(train_error_7), rowMeans(train_error_8), rowMeans(train_error_9))
+
+avg_test_error = cbind(rowMeans(test_error_1), rowMeans(test_error_2), rowMeans(test_error_3), rowMeans(test_error_4), rowMeans(test_error_5), rowMeans(test_error_6), rowMeans(test_error_7), rowMeans(test_error_8), rowMeans(test_error_9))
+```
+
+
+## Results
+
+The **frequency** of the "best" model selection
+
+```{r}
+par(mfrow=c(1,3),oma = c(0, 0, 3, 0))
+
+barplot(table(lowest_test_error[1,]), main="Sigma=1", 
+        xlab="Model Size", ylab="Model Selection Frequency", col="dodgerblue")
+barplot(table(lowest_test_error[2,]), main="Sigma=2", 
+        xlab="Model Size", ylab="Model Selection Frequency", col="dodgerblue")
+barplot(table(lowest_test_error[3,]), main="Sigma=4",
+        xlab="Model Size", ylab="Model Selection Frequency", col="dodgerblue")
+
+mtext("Model Selection Frequency", outer = TRUE, cex = 1.5)
+```
+
+**Train RMSE** vs **Test RMSE**
+
+```{r}
+par(mfrow=c(1,3),oma = c(0, 0, 3, 0))
+
+plot(avg_train_error[1,] ~ model_size,
+     type = "l", lwd = 2, ylim = c(1.0, 6.0),
+     xlab = "Model Size", ylab = "RMSE", main = "Sigma=1", col  = "red")
+points(model_size, avg_train_error[1,], col = "red", pch = 20, cex = 1)
+points(model_size, avg_test_error[1,], col = "dodgerblue", pch = 20, cex = 1)
+lines(model_size, avg_test_error[1,], col = "dodgerblue", lwd = 2)
+legend("topright", c("Train RMSE", "Test RMSE"), lty = c(1, 1), lwd = 2, cex=1,
+         col = c("red", "dodgerblue"))
+
+plot(avg_train_error[2,] ~ model_size,
+     type = "l", lwd = 2, ylim = c(1.0, 6.0),
+     xlab = "Model Size", ylab = "RMSE", main = "Sigma=2", col  = "red")
+points(model_size, avg_train_error[2,], col = "red", pch = 20, cex = 1)
+points(model_size, avg_test_error[2,], col = "dodgerblue", pch = 20, cex = 1)
+lines(model_size, avg_test_error[2,], col = "dodgerblue", lwd = 2)
+legend("topright", c("Train RMSE", "Test RMSE"), lty = c(1, 1), lwd = 2, cex=1,
+         col = c("red", "dodgerblue"))
+
+plot(avg_train_error[3,] ~ model_size,
+     type = "l", lwd = 2, ylim = c(1.0, 6.0),
+     xlab = "Model Size", ylab = "RMSE", main = "Sigma=4", col  = "red")
+points(model_size, avg_train_error[3,], col = "red", pch = 20, cex = 1)
+points(model_size, avg_test_error[3,], col = "dodgerblue", pch = 20, cex = 1)
+lines(model_size, avg_test_error[3,], col = "dodgerblue", lwd = 2)
+legend("topright", c("Train RMSE", "Test RMSE"), lty = c(1, 1), lwd = 2, cex=1,
+         col = c("red", "dodgerblue"))
+
+mtext("Train RMSE vs Test RMSE", outer = TRUE, cex = 1.2)
+```
+
+
+## Discussion
+
+1. Does the method always select the correct model? On average, does is select the correct model?
+  
+  This method is not the best way to select the correct model, but on average, it can select the correct model. As shown in the frequency of the "best" model selection, the model 6 - the correct model - is the most model selected. 
+
+
+2. How does the level of noise affect the results?
+
+  From the first plot, we can observe that as the noise level increases, the number of times it makes the right choice decreases; from the second plot, as the noise level increases, the average of train RMSE and test RMSE increase. It indicates that this method is good to select model with low noise level, but it might not be the ideal method to select model with large noise level. 
+
+
+# Simulation Study 3: Power (Graduate Students only)
+
+## Introduction
+
+In this simulation study we will investigate the **power** of the significance of regression test for simple linear regression. 
+
+\[
+H_0: \beta_{1} = 0 \ \text{vs} \ H_1: \beta_{1} \neq 0
+\]
+
+*Power* is the probability of rejecting the null hypothesis when the null is not true, that is, the alternative is true and $\beta_{1}$ is non-zero. Essentially, power is the probability that a signal of a particular strength will be detected. Many things can affect the power of a test. In this simulation study, we are going to investigate three factors and how they affect power.  
+
+- Sample Size, $n$
+- Signal Strength, $\beta_1$
+- Noise Level, $\sigma$
+
+To do so we will simulate from the model:
+
+\[
+Y_i = \beta_0 + \beta_1 x_i + \epsilon_i
+\]
+
+where $\epsilon_i \sim N(0, \sigma^2)$. For simplicity, we will let $\beta_0 = 0$ and then consider different signals, noises, and sample sizes:
+
+- $\beta_1 \in (-2, -1.9, -1.8, \ldots, -0.1, 0, 0.1, 0.2, 0.3, \ldots 1.9, 2)$
+- $\sigma \in (1, 2, 4)$
+- $n \in (10, 20, 30)$
+
+We will hold the significance level constant at $\alpha = 0.05$. For each possible $\beta_1$ and $\sigma$ combination, simulate from the true model at least $1000$ times. Each time, perform the significance of the regression test. The plots show how power is affected by these three factors. 
+
+
+## Methods
+
+The methods section contains the `R` code that I use to generate the results in this simulation study.
+
+```{r}
+# Set seed
+birthday = 19950117
+set.seed(birthday)
+beta_1s = seq(-2, 2, 0.1)
+ns = c(10, 20, 30)
+sigmac = c(1, 2, 4)
+```
+
+The **power** of the significance of regression test when $\sigma = 1$. 
+
+```{r}
+sigma = 1
+num_sims = 1000
+
+p_val = rep(0, num_sims)
+power_1 = matrix(0, nrow=3, ncol=41)
+
+for (j in 1:3) {
+  n = j*10
+  x_values = seq(0, 5, length = n)
+  for (m in 0:40) {
+    beta_1 = (m - 20) / 10
+    for (i in 1:num_sims) {
+      eps = rnorm(n, mean = 0, sd = sigma)
+      y = beta_1 * x_values + eps  
+      fit_model = lm(y ~ x_values)
+      p_val[i] = summary(fit_model)$coefficients[2,4]
+    }
+    power_1[j, m+1] = mean(p_val < 0.05)
+  }
+}
+
+colnames(power_1) = beta_1s
+rownames(power_1) = ns
+```
+
+The **power** of the significance of regression test when $\sigma = 2$. 
+
+```{r}
+sigma = 2
+num_sims = 1000
+
+p_val = rep(0, num_sims)
+power_2 = matrix(0, nrow=3, ncol=41)
+
+for (j in 1:3) {
+  n = j*10
+  x_values = seq(0, 5, length = n)
+  for (m in 0:40) {
+    beta_1 = (m - 20) / 10
+    for (i in 1:num_sims) {
+      eps = rnorm(n, mean = 0, sd = sigma)
+      y = beta_1 * x_values + eps  
+      fit_model = lm(y ~ x_values)
+      p_val[i] = summary(fit_model)$coefficients[2,4]
+    }
+    power_2[j, m+1] = mean(p_val < 0.05)
+  }
+}
+
+colnames(power_2) = beta_1s
+rownames(power_2) = ns
+```
+
+The **power** of the significance of regression test when $\sigma = 4$. 
+
+```{r}
+sigma = 4
+num_sims = 1000
+
+p_val = rep(0, num_sims)
+power_3 = matrix(0, nrow=3, ncol=41)
+
+for (j in 1:3) {
+  n = j*10
+  x_values = seq(0, 5, length = n)
+  for (m in 0:40) {
+    beta_1 = (m - 20) / 10
+    for (i in 1:num_sims) {
+      eps = rnorm(n, mean = 0, sd = sigma)
+      y = beta_1 * x_values + eps  
+      fit_model = lm(y ~ x_values)
+      p_val[i] = summary(fit_model)$coefficients[2,4]
+    }
+    power_3[j, m+1] = mean(p_val < 0.05)
+  }
+}
+
+colnames(power_3) = beta_1s
+rownames(power_3) = ns
+```
+
+
+## Results
+
+The **power** of the significance of regression test when $\sigma = 1$. 
+
+```{r}
+plot(power_1[1,] ~ beta_1s,
+     type = "b", lwd=1,
+     pch  = 20, cex  = 1,
+     xlab = "beta_1",
+     xlim = range(beta_1s),
+     ylab = "Power",
+     main = "Sigma = 1",
+     col  = "red")
+lines(beta_1s,power_1[2,], type = "b", col="orange", pch=20, cex=1)
+lines(beta_1s,power_1[3,], type = "b", col="blue", pch=20, cex=1)
+legend("bottomright",lty=c(1, 1, 1), c("sample-size 10","sample-size 20","sample-size 30"), 
+       col=c("red","orange","blue"), y.intersp=1, x.intersp=1, text.width=1, bty = "n")
+```
+
+The **power** of the significance of regression test when $\sigma = 2$. 
+
+```{r}
+plot(power_2[1,] ~ beta_1s,
+     type = "b", lwd=1,
+     pch  = 20, cex  = 1,
+     xlab = "beta_1",
+     xlim = range(beta_1s),
+     ylab = "Power",
+     main = "Sigma = 2",
+     col  = "red")
+lines(beta_1s,power_2[2,], type = "b", col="orange", pch=20, cex=1)
+lines(beta_1s,power_2[3,], type = "b", col="blue", pch=20, cex=1)
+legend("bottomright",lty=c(1, 1, 1), c("sample-size 10","sample-size 20","sample-size 30"), 
+       col=c("red","orange","blue"), y.intersp=1, x.intersp=1, text.width=1, bty = "n")
+```
+
+The **power** of the significance of regression test when $\sigma = 4$.
+
+```{r}
+plot(power_3[1,] ~ beta_1s,
+     type = "b", lwd=1,
+     pch  = 20, cex  = 1,
+     xlab = "beta_1",
+     xlim = range(beta_1s),
+     ylab = "Power",
+     main = "Sigma = 4",
+     col  = "red")
+lines(beta_1s,power_3[2,], type = "b", col="orange", pch=20, cex=1)
+lines(beta_1s,power_3[3,], type = "b", col="blue", pch=20, cex=1)
+legend("bottomright",lty=c(1, 1, 1), c("sample-size 10","sample-size 20","sample-size 30"), 
+       col=c("red","orange","blue"), y.intersp=1, x.intersp=1, text.width=1, bty = "n")
+```
+
+
+## Discussion
+
+1. How do n, $\beta_1$ and $\sigma$ affect power? Consider additional plots to demonstrate these effects.
+
+  From the above results, we can see that as the noise level or $\sigma$ increases, the power of the significance of regression test decreases. Likewise, as the sample size or n increases, the power of the significance of regression test increases, sugesting that larger sample size has higher power values. $\beta_1$ values close to zero have the least power values as we would expect. Combining all the plots, the increased values of power can be obtained with smaller $\sigma$ values, larger n values, and $\beta_1$ values that are farther away from 0.
+
+```{r}
+# Plot noise level with power
+boxplot(rowMeans(power_1), rowMeans(power_2), rowMeans(power_3), col = "grey", names = c(1,2,4), ylab = "Power", xlab = "Noise Level (Sigma)", main = "Noise Level VS Power")
+```
+
+This plot shows that the noise level increases, the power of the significance of regression test decreases. 
+
+```{r}
+# Plot sample size with power
+boxplot((power_1[1,] + power_2[1,] + power_3[1,]), (power_1[2,] + power_2[2,] + power_3[2,]), (power_1[3,] + power_2[3,] + power_3[3,]), col = "grey", names = c(10,20,30), ylab = "Power", xlab = "Sample Size (n)", main = "Sample Size VS Power")
+```
+
+This plot shows that the sample size increases, the power of the significance of regression test increases. 
+
+
+2. Are 1000 simulations sufficient?
+
+  1000 simulations is **sufficient** since the type I errors have a rate of $\alpha$ and type-2 error have a typical rate of $\beta_1$.
+  
+  
